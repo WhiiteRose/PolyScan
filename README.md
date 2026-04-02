@@ -69,4 +69,4 @@ Always do your own research (DYOR) and never invest more than you can afford to 
 
 ## 📜 License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
