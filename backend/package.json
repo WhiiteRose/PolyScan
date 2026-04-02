@@ -1,0 +1,10 @@
+{
+  "name": "polyscan-backend",
+  "version": "1.0.0",
+  "description": "PolyScan — Polymarket copy trading data fetcher",
+  "main": "fetch-data.js",
+  "scripts": {
+    "fetch": "node fetch-data.js"
+  },
+  "type": "commonjs"
+}

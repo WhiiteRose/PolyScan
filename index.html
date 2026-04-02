@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PolyScan — Dashboard d'analyse des meilleurs traders Polymarket pour le copy trading">
+  <title>PolyScan — Polymarket Copy Trading Scanner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="main-header">
+    <div class="header-left">
+      <h1 id="logo">
+        <span class="logo-icon">◆</span>
+        PolyScan
+      </h1>
+      <span class="header-badge">POLYMARKET COPY TRADING</span>
+    </div>
+    <div class="header-right">
+      <div id="meta-info">
+        <div class="meta-item">
+          <span class="meta-label">Last Update</span>
+          <span class="meta-value" id="update-time">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Candidates</span>
+          <span class="meta-value" id="candidates-count">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Status</span>
+          <span class="meta-value status-live" id="status-badge">● Loading</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="app">
+    <div id="loading-state">
+      <div class="spinner"></div>
+      <p>Loading data from <code>data/top10.json</code>...</p>
+    </div>
+
+    <div id="error-state" style="display:none;">
+      <div class="error-box">
+        <h2>⚠ Data Unavailable</h2>
+        <p id="error-message">Unable to load trader data.</p>
+        <p class="error-hint">Run <code>node backend/fetch-data.js</code> to generate data, or check the console for details.</p>
+      </div>
+    </div>
+
+    <div id="content" style="display:none;">
+      <!-- Scoring legend bar -->
+      <section id="scoring-legend" class="panel">
+        <button class="panel-toggle" id="legend-toggle" aria-label="Toggle scoring legend">
+          <span class="panel-title">📊 Scoring Weights</span>
+          <span class="toggle-icon">▾</span>
+        </button>
+        <div class="panel-body" id="legend-body">
+          <div class="weights-grid" id="weights-grid"></div>
+        </div>
+      </section>
+
+      <!-- Main comparison table -->
+      <section id="traders-section">
+        <div class="table-wrapper">
+          <table id="traders-table">
+            <thead>
+              <tr id="table-header"></tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Expanded detail panel -->
+      <section id="detail-panel" style="display:none;">
+        <div class="detail-header">
+          <div class="detail-title-row">
+            <h2 id="detail-name"></h2>
+            <div class="detail-actions">
+              <button class="btn btn-copy" id="detail-copy-btn">📋 Copy Wallet Address</button>
+              <a class="btn btn-link" id="detail-profile-link" href="#" target="_blank">↗ Polymarket Profile</a>
+              <button class="btn btn-close" id="detail-close-btn">✕ Close</button>
+            </div>
+          </div>
+          <div class="detail-meta" id="detail-meta"></div>
+        </div>
+        <div class="detail-body">
+          <h3>Active Positions <span class="subtitle" id="detail-positions-count"></span></h3>
+          <div class="table-wrapper">
+            <table id="detail-positions-table">
+              <thead>
+                <tr>
+                  <th>Market</th>
+                  <th>Outcome</th>
+                  <th class="num">Size</th>
+                  <th class="num">Avg Price</th>
+                  <th class="num">Current</th>
+                  <th class="num">PnL ($)</th>
+                  <th class="num">PnL (%)</th>
+                  <th>End Date</th>
+                </tr>
+              </thead>
+              <tbody id="detail-positions-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer id="main-footer">
+    <p>PolyScan — Data from <a href="https://polymarket.com" target="_blank">Polymarket</a> public API. Not financial advice. DYOR.</p>
+  </footer>
+
+  <div id="toast" class="toast" style="display:none;">
+    <span id="toast-text"></span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
