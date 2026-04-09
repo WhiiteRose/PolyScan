@@ -45,10 +45,15 @@
     </div>
   </header>
 
+  <!-- Category tabs — outside <main> so sticky works correctly -->
+  <div id="category-tabs-wrapper" style="display:none;">
+    <div id="category-tabs"></div>
+  </div>
+
   <main id="app">
     <div id="loading-state">
       <div class="spinner"></div>
-      <p>Loading data from <code>data/top10.json</code>...</p>
+      <p>Chargement des données…</p>
     </div>
 
     <div id="error-state" style="display:none;">

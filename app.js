@@ -1,39 +1,40 @@
 /**
- * PolyScan — Frontend Application
- * Loads top10.json and renders an interactive comparison dashboard
+ * PolyScan — Frontend Application v3.0
+ * Loads leaderboard.json and renders an interactive multi-category dashboard
  */
 
-// ── State ───────────────────────────────────────────────────────────────────
-let DATA = null;
-let currentSort = { key: 'compositeScore', dir: 'desc' };
-let expandedWallet = null;
+// ── State ────────────────────────────────────────────────────────────────────
+let DATA            = null;
+let currentCategory = 'OVERALL';
+let currentSort     = { key: 'compositeScore', dir: 'desc' };
+let expandedWallet  = null;
 
-// ── Column definitions ──────────────────────────────────────────────────────
+// ── Column definitions ───────────────────────────────────────────────────────
 const COLUMNS = [
-  { key: 'rank',                label: '#',            type: 'rank',    sortable: true,  width: '36px' },
-  { key: 'userName',            label: 'Trader',       type: 'trader',  sortable: true },
-  { key: 'compositeScore',      label: 'Score',        type: 'score',   sortable: true,  width: '120px' },
-  { key: 'metrics.roiPct',      label: 'ROI %',        type: 'pct',     sortable: true },
-  { key: 'metrics.winRate',     label: 'Win Rate',     type: 'pct',     sortable: true },
-  { key: 'metrics.dayPnl',     label: 'PnL 1D',       type: 'money',   sortable: true },
-  { key: 'metrics.weekPnl',    label: 'PnL 7D',       type: 'money',   sortable: true },
-  { key: 'metrics.monthPnl',   label: 'PnL 30D',      type: 'money',   sortable: true },
-  { key: 'metrics.totalPnl',   label: 'PnL All',      type: 'money',   sortable: true },
-  { key: 'metrics.totalVolume', label: 'Volume',       type: 'money',   sortable: true },
-  { key: 'metrics.activePositions',  label: 'Active Pos.',  type: 'num', sortable: true },
-  { key: 'metrics.diversification',  label: 'Markets',      type: 'num', sortable: true },
-  { key: 'metrics.medianPositionSize', label: 'Med. Size',  type: 'money', sortable: true },
-  { key: 'metrics.consistencyScore',   label: 'Consistency', type: 'pct', sortable: true },
-  { key: 'leaderboardRanks',   label: 'LB Ranks (D/W/M/A)', type: 'ranks', sortable: false },
-  { key: '_copy',              label: 'Wallet',       type: 'copy',    sortable: false },
+  { key: 'rank',                      label: '#',                   type: 'rank',   sortable: true,  width: '36px' },
+  { key: 'userName',                  label: 'Trader',              type: 'trader', sortable: true },
+  { key: 'compositeScore',            label: 'Score',               type: 'score',  sortable: true,  width: '120px' },
+  { key: 'metrics.roiPct',            label: 'ROI %',               type: 'pct',    sortable: true },
+  { key: 'metrics.winRate',           label: 'Win Rate',            type: 'pct',    sortable: true },
+  { key: 'metrics.dayPnl',            label: 'PnL 1D',              type: 'money',  sortable: true },
+  { key: 'metrics.weekPnl',           label: 'PnL 7D',              type: 'money',  sortable: true },
+  { key: 'metrics.monthPnl',          label: 'PnL 30D',             type: 'money',  sortable: true },
+  { key: 'metrics.totalPnl',          label: 'PnL All',             type: 'money',  sortable: true },
+  { key: 'metrics.totalVolume',       label: 'Volume',              type: 'money',  sortable: true },
+  { key: 'metrics.activePositions',   label: 'Active Pos.',         type: 'num',    sortable: true },
+  { key: 'metrics.diversification',   label: 'Markets',             type: 'num',    sortable: true },
+  { key: 'metrics.medianPositionSize',label: 'Med. Size',           type: 'money',  sortable: true },
+  { key: 'metrics.consistencyScore',  label: 'Consistency',         type: 'pct',    sortable: true },
+  { key: 'leaderboardRanks',          label: 'LB Ranks (D/W/M/A)', type: 'ranks',  sortable: false },
+  { key: '_copy',                     label: 'Wallet',              type: 'copy',   sortable: false },
 ];
 
-// ── Init ────────────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   try {
-    const res = await fetch('data/top10.json');
+    const res = await fetch('data/leaderboard.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     DATA = await res.json();
     showContent();
@@ -42,56 +43,98 @@ async function init() {
   }
 }
 
-function showContent() {
-  document.getElementById('loading-state').style.display = 'none';
-  document.getElementById('content').style.display = 'block';
+// ── Helpers to get current category data ─────────────────────────────────────
+function getCatData() {
+  return DATA.categories?.[currentCategory] || null;
+}
 
-  // Update header metadata
+function getCatTraders() {
+  return getCatData()?.traders || [];
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function showContent() {
+  document.getElementById('loading-state').style.display        = 'none';
+  document.getElementById('content').style.display              = 'block';
+  document.getElementById('category-tabs-wrapper').style.display = 'block';
+
   const date = new Date(DATA.generatedAt);
   document.getElementById('update-time').textContent = date.toLocaleString('fr-FR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
   document.getElementById('candidates-count').textContent = DATA.totalCandidatesAnalyzed;
-  document.getElementById('scored-count').textContent = DATA.scoredCandidatesCount ?? '—';
-  document.getElementById('status-badge').textContent = '● Live';
+  document.getElementById('status-badge').textContent     = '● Live';
   startNextRefreshCountdown(new Date(DATA.generatedAt));
 
-  // Render scoring weights
   renderWeights();
-
-  // Render table
+  renderCategoryTabs();
   renderTableHeader();
   renderTableBody();
+  updateCategoryMeta();
 
-  // Setup legend toggle
   setupLegendToggle();
-
-  // Setup detail panel close
   document.getElementById('detail-close-btn').addEventListener('click', closeDetail);
 }
 
 function showError(msg) {
   document.getElementById('loading-state').style.display = 'none';
-  document.getElementById('error-state').style.display = 'block';
-  document.getElementById('error-message').textContent = msg;
-  document.getElementById('status-badge').textContent = '● Error';
-  document.getElementById('status-badge').className = 'meta-value';
-  document.getElementById('status-badge').style.color = 'var(--red)';
+  document.getElementById('error-state').style.display   = 'block';
+  document.getElementById('error-message').textContent   = msg;
+  document.getElementById('status-badge').textContent    = '● Error';
+  document.getElementById('status-badge').style.color    = 'var(--red)';
 }
 
-// ── Scoring Legend ──────────────────────────────────────────────────────────
+// ── Category tabs ─────────────────────────────────────────────────────────────
+function renderCategoryTabs() {
+  const container = document.getElementById('category-tabs');
+  container.innerHTML = '';
+
+  for (const [id, cat] of Object.entries(DATA.categories)) {
+    const btn = document.createElement('button');
+    btn.className   = 'cat-tab' + (id === currentCategory ? ' active' : '');
+    btn.dataset.cat = id;
+    btn.innerHTML   = `
+      <span class="cat-tab-icon">${cat.icon}</span>
+      ${cat.label}
+      <span class="cat-tab-count">${cat.traders?.length ?? 0}</span>`;
+    btn.addEventListener('click', () => selectCategory(id));
+    container.appendChild(btn);
+  }
+}
+
+function selectCategory(id) {
+  if (id === currentCategory) return;
+  currentCategory = id;
+  expandedWallet  = null;
+  document.getElementById('detail-panel').style.display = 'none';
+
+  // Update active tab
+  for (const btn of document.querySelectorAll('.cat-tab')) {
+    btn.classList.toggle('active', btn.dataset.cat === id);
+  }
+
+  updateCategoryMeta();
+  renderTableBody();
+}
+
+function updateCategoryMeta() {
+  const cat = getCatData();
+  document.getElementById('scored-count').textContent = cat?.scoredCount ?? '—';
+}
+
+// ── Scoring legend ────────────────────────────────────────────────────────────
 function renderWeights() {
   const grid = document.getElementById('weights-grid');
   if (!DATA.scoringWeights) return;
   const labels = {
-    roiPct: 'ROI %',
-    monthPnl: 'PnL (30 days)',
-    weekPnl: 'PnL (7 days)',
-    dayPnl: 'PnL (24h)',
-    consistency: 'Consistency',
-    winRate: 'Win Rate',
-    activity: 'Activity Level',
+    roiPct:              'ROI %',
+    monthPnl:            'PnL (30 days)',
+    weekPnl:             'PnL (7 days)',
+    dayPnl:              'PnL (24h)',
+    consistency:         'Consistency',
+    winRate:             'Win Rate',
+    activity:            'Activity Level',
     budgetCompatibility: 'Budget Fit',
   };
   for (const [key, pct] of Object.entries(DATA.scoringWeights)) {
@@ -103,16 +146,13 @@ function renderWeights() {
 }
 
 function setupLegendToggle() {
-  const panel = document.getElementById('scoring-legend');
+  const panel  = document.getElementById('scoring-legend');
   const toggle = document.getElementById('legend-toggle');
-  toggle.addEventListener('click', () => {
-    panel.classList.toggle('collapsed');
-  });
-  // Start collapsed
+  toggle.addEventListener('click', () => panel.classList.toggle('collapsed'));
   panel.classList.add('collapsed');
 }
 
-// ── Table Header ────────────────────────────────────────────────────────────
+// ── Table header ──────────────────────────────────────────────────────────────
 function renderTableHeader() {
   const tr = document.getElementById('table-header');
   tr.innerHTML = '';
@@ -133,30 +173,27 @@ function renderTableHeader() {
   }
 }
 
-// ── Table Body ──────────────────────────────────────────────────────────────
+// ── Table body ────────────────────────────────────────────────────────────────
 function renderTableBody() {
-  const tbody = document.getElementById('table-body');
+  const tbody  = document.getElementById('table-body');
   tbody.innerHTML = '';
 
-  const traders = [...DATA.traders];
+  const traders = [...getCatTraders()];
 
-  // Sort
   traders.sort((a, b) => {
     const va = getNestedValue(a, currentSort.key);
     const vb = getNestedValue(b, currentSort.key);
-    const mult = currentSort.dir === 'asc' ? 1 : -1;
-    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * mult;
-    return String(va).localeCompare(String(vb)) * mult;
+    const m  = currentSort.dir === 'asc' ? 1 : -1;
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * m;
+    return String(va).localeCompare(String(vb)) * m;
   });
 
-  // Re-assign visual rank after sort
   for (const trader of traders) {
     const tr = document.createElement('tr');
     tr.className = 'data-row';
     if (trader.wallet === expandedWallet) tr.classList.add('active');
 
     tr.addEventListener('click', (e) => {
-      // Don't expand if clicking copy button
       if (e.target.closest('.btn-copy-small')) return;
       toggleDetail(trader);
     });
@@ -169,41 +206,34 @@ function renderTableBody() {
           td.className = `rank-cell rank-${trader.rank}`;
           td.textContent = trader.rank;
           break;
-
         case 'trader':
           td.innerHTML = renderTraderCell(trader);
           break;
-
         case 'score':
           td.className = 'score-cell';
           td.innerHTML = renderScoreBar(trader.compositeScore);
           break;
-
         case 'money': {
           td.className = 'num';
           const val = getNestedValue(trader, col.key);
           td.innerHTML = formatMoney(val);
           break;
         }
-
         case 'pct': {
           td.className = 'num';
           const val = getNestedValue(trader, col.key);
           td.innerHTML = formatPct(val);
           break;
         }
-
         case 'num': {
           td.className = 'num';
           const val = getNestedValue(trader, col.key);
           td.textContent = val != null ? val.toLocaleString() : '—';
           break;
         }
-
         case 'ranks':
           td.innerHTML = renderRankBadges(trader.leaderboard);
           break;
-
         case 'copy':
           td.innerHTML = renderCopyButton(trader.wallet);
           break;
@@ -216,13 +246,13 @@ function renderTableBody() {
   }
 }
 
-// ── Cell Renderers ──────────────────────────────────────────────────────────
+// ── Cell renderers ────────────────────────────────────────────────────────────
 function renderTraderCell(trader) {
-  const img = trader.profileImage
+  const img   = trader.profileImage
     ? `<img class="trader-avatar" src="${trader.profileImage}" alt="" onerror="this.style.display='none'">`
     : '<div class="trader-avatar"></div>';
-  const badge = trader.verified ? '<span class="badge-verified" title="Verified">✓</span>' : '';
-  const name = escapeHtml(trader.userName);
+  const badge  = trader.verified ? '<span class="badge-verified" title="Verified">✓</span>' : '';
+  const name   = escapeHtml(trader.userName);
   const wallet = trader.wallet.slice(0, 6) + '…' + trader.wallet.slice(-4);
   return `
     <div class="trader-info">
@@ -235,9 +265,8 @@ function renderTraderCell(trader) {
 }
 
 function renderScoreBar(score) {
-  const maxScore = 100;
-  const pct = Math.min((score / maxScore) * 100, 100);
-  const hue = Math.round((pct / 100) * 120); // 0=red, 120=green
+  const pct   = Math.min((score / 100) * 100, 100);
+  const hue   = Math.round((pct / 100) * 120);
   const color = `hsl(${hue}, 70%, 50%)`;
   return `
     <div class="score-bar-container">
@@ -250,17 +279,14 @@ function renderScoreBar(score) {
 
 function renderRankBadges(lb) {
   const periods = [
-    { key: 'day',   label: 'D' },
-    { key: 'week',  label: 'W' },
-    { key: 'month', label: 'M' },
-    { key: 'all',   label: 'A' },
+    { key: 'day', label: 'D' }, { key: 'week',  label: 'W' },
+    { key: 'month', label: 'M' }, { key: 'all', label: 'A' },
   ];
   return '<div class="rank-badges">' + periods.map(p => {
-    const data = lb[p.key];
-    if (data && data.rank) {
-      return `<span class="rank-badge has-rank" title="${p.label}: #${data.rank}">${p.label}${data.rank}</span>`;
-    }
-    return `<span class="rank-badge" title="Not in top 50 for ${p.label}">—</span>`;
+    const d = lb?.[p.key];
+    return d?.rank
+      ? `<span class="rank-badge has-rank" title="${p.label}: #${d.rank}">${p.label}${d.rank}</span>`
+      : `<span class="rank-badge" title="Not in top ${p.label}">—</span>`;
   }).join('') + '</div>';
 }
 
@@ -270,24 +296,24 @@ function renderCopyButton(wallet) {
 
 function formatMoney(val) {
   if (val == null || isNaN(val)) return '<span class="pnl-zero">—</span>';
-  const cls = val > 0 ? 'pnl-positive' : val < 0 ? 'pnl-negative' : 'pnl-zero';
+  const cls    = val > 0 ? 'pnl-positive' : val < 0 ? 'pnl-negative' : 'pnl-zero';
   const prefix = val > 0 ? '+' : '';
-  const abs = Math.abs(val);
-  let formatted;
-  if (abs >= 1_000_000) formatted = '$' + (val / 1_000_000).toFixed(2) + 'M';
-  else if (abs >= 1_000) formatted = '$' + (val / 1_000).toFixed(1) + 'K';
-  else formatted = '$' + val.toFixed(2);
-  return `<span class="${cls}">${prefix}${formatted}</span>`;
+  const abs    = Math.abs(val);
+  let fmt;
+  if (abs >= 1_000_000) fmt = '$' + (val / 1_000_000).toFixed(2) + 'M';
+  else if (abs >= 1_000) fmt = '$' + (val / 1_000).toFixed(1) + 'K';
+  else                   fmt = '$' + val.toFixed(2);
+  return `<span class="${cls}">${prefix}${fmt}</span>`;
 }
 
 function formatPct(val) {
   if (val == null || isNaN(val)) return '<span class="pnl-zero">—</span>';
-  const cls = val > 0 ? 'pnl-positive' : val < 0 ? 'pnl-negative' : 'pnl-zero';
+  const cls    = val > 0 ? 'pnl-positive' : val < 0 ? 'pnl-negative' : 'pnl-zero';
   const prefix = val > 0 ? '+' : '';
   return `<span class="${cls}">${prefix}${val.toFixed(1)}%</span>`;
 }
 
-// ── Sorting ─────────────────────────────────────────────────────────────────
+// ── Sorting ───────────────────────────────────────────────────────────────────
 function sortBy(key) {
   if (currentSort.key === key) {
     currentSort.dir = currentSort.dir === 'desc' ? 'asc' : 'desc';
@@ -299,64 +325,53 @@ function sortBy(key) {
   renderTableBody();
 }
 
-// ── Detail Panel ────────────────────────────────────────────────────────────
+// ── Detail panel ──────────────────────────────────────────────────────────────
 function toggleDetail(trader) {
-  if (expandedWallet === trader.wallet) {
-    closeDetail();
-    return;
-  }
+  if (expandedWallet === trader.wallet) { closeDetail(); return; }
   expandedWallet = trader.wallet;
   showDetail(trader);
-  renderTableBody(); // Re-render to mark active row
+  renderTableBody();
 }
 
 function showDetail(trader) {
   const panel = document.getElementById('detail-panel');
   panel.style.display = 'block';
 
-  // Header
-  document.getElementById('detail-name').textContent =
-    `#${trader.rank} — ${trader.userName}`;
+  document.getElementById('detail-name').textContent = `#${trader.rank} — ${trader.userName}`;
 
-  // Copy wallet button
   const copyBtn = document.getElementById('detail-copy-btn');
   copyBtn.onclick = () => copyWallet(copyBtn, trader.wallet);
 
-  // Profile link
   const profileLink = document.getElementById('detail-profile-link');
-  profileLink.href = trader.polymarketUrl;
+  profileLink.href  = trader.polymarketUrl;
 
-  // Twitter/X link
   const twitterLink = document.getElementById('detail-twitter-link');
   if (trader.xUsername) {
-    twitterLink.href = `https://x.com/${trader.xUsername}`;
+    twitterLink.href         = `https://x.com/${trader.xUsername}`;
     twitterLink.style.display = '';
   } else {
     twitterLink.style.display = 'none';
   }
 
-  // Meta stats
   const meta = document.getElementById('detail-meta');
-  const m = trader.metrics;
+  const m    = trader.metrics;
+  meta.className = 'detail-stats-grid';
   meta.innerHTML = [
-    stat('Wallet', trader.wallet.slice(0, 10) + '…' + trader.wallet.slice(-6), ''),
-    stat('Score', trader.compositeScore, ''),
-    stat('ROI', m.roiPct + '%', m.roiPct >= 0 ? 'pnl-positive' : 'pnl-negative'),
-    stat('Win Rate', m.winRate + '%', ''),
-    stat('Wins / Losses', `${m.winsCount} / ${m.lossesCount}`, ''),
-    stat('PnL (Day)', fmtUsd(m.dayPnl), pnlClass(m.dayPnl)),
-    stat('PnL (Week)', fmtUsd(m.weekPnl), pnlClass(m.weekPnl)),
-    stat('PnL (Month)', fmtUsd(m.monthPnl), pnlClass(m.monthPnl)),
-    stat('PnL (All)', fmtUsd(m.totalPnl), pnlClass(m.totalPnl)),
-    stat('Volume (All)', fmtUsd(m.totalVolume), ''),
-    stat('Active Positions', m.activePositions, ''),
-    stat('Markets', m.diversification, ''),
-    stat('Avg Pos. Size', fmtUsd(m.avgPositionSize), ''),
-    stat('Median Pos. Size', fmtUsd(m.medianPositionSize), ''),
-    trader.xUsername ? stat('𝕏', `@${trader.xUsername}`, '') : '',
-  ].join('');
+    stat('Score',            trader.compositeScore,  ''),
+    stat('ROI',              m.roiPct + '%',         pnlClass(m.roiPct)),
+    stat('Win Rate',         m.winRate + '%',        ''),
+    stat('Wins / Losses',   `${m.winsCount} / ${m.lossesCount}`, ''),
+    stat('PnL 24h',          fmtUsd(m.dayPnl),      pnlClass(m.dayPnl)),
+    stat('PnL 7j',           fmtUsd(m.weekPnl),     pnlClass(m.weekPnl)),
+    stat('PnL 30j',          fmtUsd(m.monthPnl),    pnlClass(m.monthPnl)),
+    stat('PnL All-time',     fmtUsd(m.totalPnl),    pnlClass(m.totalPnl)),
+    stat('Volume',           fmtUsd(m.totalVolume),  ''),
+    stat('Active Pos.',      m.activePositions,      ''),
+    stat('Marchés',          m.diversification,      ''),
+    stat('Taille médiane',   fmtUsd(m.medianPositionSize), ''),
+    trader.xUsername ? stat('𝕏 Twitter', `@${trader.xUsername}`, '') : '',
+  ].filter(Boolean).join('');
 
-  // Positions table
   const positions = trader.positions || [];
   document.getElementById('detail-positions-count').textContent = `(${positions.length})`;
 
@@ -369,10 +384,8 @@ function showDetail(trader) {
     tbody.appendChild(tr);
   } else {
     for (const p of positions) {
-      const tr = document.createElement('tr');
-      const marketUrl = p.eventSlug
-        ? `https://polymarket.com/event/${p.eventSlug}`
-        : '#';
+      const tr        = document.createElement('tr');
+      const marketUrl = p.eventSlug ? `https://polymarket.com/event/${p.eventSlug}` : '#';
       tr.innerHTML = `
         <td><a href="${marketUrl}" target="_blank" title="${escapeHtml(p.title)}">${truncate(p.title, 40)}</a></td>
         <td>${p.outcome}</td>
@@ -387,7 +400,6 @@ function showDetail(trader) {
     }
   }
 
-  // Scroll to detail
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -398,46 +410,47 @@ function closeDetail() {
 }
 
 function stat(label, value, cls) {
-  return `<div class="detail-stat"><span class="detail-stat-label">${label}</span><span class="detail-stat-value ${cls}">${value}</span></div>`;
+  if (value === '' || value == null) return '';
+  return `<div class="detail-stat">
+    <span class="detail-stat-label">${label}</span>
+    <span class="detail-stat-value ${cls}">${value}</span>
+  </div>`;
 }
 
-function pnlClass(v) {
-  return v > 0 ? 'pnl-positive' : v < 0 ? 'pnl-negative' : 'pnl-zero';
-}
+function pnlClass(v) { return v > 0 ? 'pnl-positive' : v < 0 ? 'pnl-negative' : 'pnl-zero'; }
 
 function fmtUsd(v) {
   if (v == null || isNaN(v)) return '—';
-  const abs = Math.abs(v);
+  const abs    = Math.abs(v);
   const prefix = v >= 0 ? '' : '-';
   if (abs >= 1_000_000) return prefix + '$' + (abs / 1_000_000).toFixed(2) + 'M';
   if (abs >= 1_000)     return prefix + '$' + (abs / 1_000).toFixed(1) + 'K';
   return prefix + '$' + abs.toFixed(2);
 }
 
-// ── Clipboard ───────────────────────────────────────────────────────────────
+// ── Clipboard ─────────────────────────────────────────────────────────────────
 function copyWallet(btn, wallet) {
   navigator.clipboard.writeText(wallet).then(() => {
     btn.classList.add('copied');
     const original = btn.textContent;
     btn.textContent = '✓ Copied!';
-    showToast(`Wallet copied: ${wallet.slice(0, 8)}…${wallet.slice(-4)}`);
+    showToast(`Wallet copié: ${wallet.slice(0, 8)}…${wallet.slice(-4)}`);
     setTimeout(() => {
       btn.classList.remove('copied');
       btn.textContent = original;
     }, 2000);
   }).catch(() => {
-    // Fallback
     const ta = document.createElement('textarea');
     ta.value = wallet;
     document.body.appendChild(ta);
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    showToast('Wallet copied!');
+    showToast('Wallet copié!');
   });
 }
 
-// ── Toast ───────────────────────────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimeout;
 function showToast(msg) {
   const toast = document.getElementById('toast');
@@ -447,7 +460,25 @@ function showToast(msg) {
   toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 2500);
 }
 
-// ── Utilities ───────────────────────────────────────────────────────────────
+// ── Next Refresh Countdown ────────────────────────────────────────────────────
+function startNextRefreshCountdown(generatedAt) {
+  const el = document.getElementById('next-refresh');
+  function update() {
+    const now  = new Date();
+    const next = new Date(generatedAt);
+    next.setUTCHours(6, 0, 0, 0);
+    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+    const diff = next - now;
+    if (diff <= 0) { el.textContent = 'Imminent'; return; }
+    const h = Math.floor(diff / 3_600_000);
+    const m = Math.floor((diff % 3_600_000) / 60_000);
+    el.textContent = `${h}h ${String(m).padStart(2, '0')}m`;
+  }
+  update();
+  setInterval(update, 60_000);
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
 function getNestedValue(obj, path) {
   return path.split('.').reduce((o, k) => (o ? o[k] : undefined), obj);
 }
@@ -463,26 +494,4 @@ function truncate(str, len) {
   return str.length > len ? str.slice(0, len - 1) + '…' : str;
 }
 
-// ── Next Refresh Countdown ───────────────────────────────────────────────────
-function startNextRefreshCountdown(generatedAt) {
-  const el = document.getElementById('next-refresh');
-  function update() {
-    // Data refreshes daily at 08:00 Paris time (UTC+2 in summer, UTC+1 in winter)
-    const now = new Date();
-    // Next 08:00 Paris = next 06:00 UTC (summer) — approximate as UTC+1 for safety
-    const next = new Date(generatedAt);
-    next.setUTCHours(6, 0, 0, 0);
-    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
-
-    const diff = next - now;
-    if (diff <= 0) { el.textContent = 'Imminent'; return; }
-    const h = Math.floor(diff / 3_600_000);
-    const m = Math.floor((diff % 3_600_000) / 60_000);
-    el.textContent = `${h}h ${String(m).padStart(2, '0')}m`;
-  }
-  update();
-  setInterval(update, 60_000);
-}
-
-// Expose copyWallet globally for inline onclick
 window.copyWallet = copyWallet;
