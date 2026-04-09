@@ -53,7 +53,9 @@ function showContent() {
     hour: '2-digit', minute: '2-digit',
   });
   document.getElementById('candidates-count').textContent = DATA.totalCandidatesAnalyzed;
+  document.getElementById('scored-count').textContent = DATA.scoredCandidatesCount ?? '—';
   document.getElementById('status-badge').textContent = '● Live';
+  startNextRefreshCountdown(new Date(DATA.generatedAt));
 
   // Render scoring weights
   renderWeights();
@@ -86,6 +88,7 @@ function renderWeights() {
     roiPct: 'ROI %',
     monthPnl: 'PnL (30 days)',
     weekPnl: 'PnL (7 days)',
+    dayPnl: 'PnL (24h)',
     consistency: 'Consistency',
     winRate: 'Win Rate',
     activity: 'Activity Level',
@@ -315,13 +318,22 @@ function showDetail(trader) {
   document.getElementById('detail-name').textContent =
     `#${trader.rank} — ${trader.userName}`;
 
-  // Copy button
+  // Copy wallet button
   const copyBtn = document.getElementById('detail-copy-btn');
   copyBtn.onclick = () => copyWallet(copyBtn, trader.wallet);
 
   // Profile link
   const profileLink = document.getElementById('detail-profile-link');
   profileLink.href = trader.polymarketUrl;
+
+  // Twitter/X link
+  const twitterLink = document.getElementById('detail-twitter-link');
+  if (trader.xUsername) {
+    twitterLink.href = `https://x.com/${trader.xUsername}`;
+    twitterLink.style.display = '';
+  } else {
+    twitterLink.style.display = 'none';
+  }
 
   // Meta stats
   const meta = document.getElementById('detail-meta');
@@ -449,6 +461,27 @@ function escapeHtml(str) {
 function truncate(str, len) {
   if (!str) return '—';
   return str.length > len ? str.slice(0, len - 1) + '…' : str;
+}
+
+// ── Next Refresh Countdown ───────────────────────────────────────────────────
+function startNextRefreshCountdown(generatedAt) {
+  const el = document.getElementById('next-refresh');
+  function update() {
+    // Data refreshes daily at 08:00 Paris time (UTC+2 in summer, UTC+1 in winter)
+    const now = new Date();
+    // Next 08:00 Paris = next 06:00 UTC (summer) — approximate as UTC+1 for safety
+    const next = new Date(generatedAt);
+    next.setUTCHours(6, 0, 0, 0);
+    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+
+    const diff = next - now;
+    if (diff <= 0) { el.textContent = 'Imminent'; return; }
+    const h = Math.floor(diff / 3_600_000);
+    const m = Math.floor((diff % 3_600_000) / 60_000);
+    el.textContent = `${h}h ${String(m).padStart(2, '0')}m`;
+  }
+  update();
+  setInterval(update, 60_000);
 }
 
 // Expose copyWallet globally for inline onclick

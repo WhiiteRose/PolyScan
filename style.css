@@ -611,6 +611,30 @@ tr.data-row.active {
   background: rgba(6, 182, 212, 0.08);
   text-decoration: none;
 }
+.btn-polycop {
+  color: var(--yellow);
+  border-color: rgba(234, 179, 8, 0.3);
+  font-weight: 600;
+}
+.btn-polycop:hover {
+  background: rgba(234, 179, 8, 0.08);
+  border-color: var(--yellow);
+}
+.btn-polycop.copied {
+  background: var(--green-bg);
+  border-color: var(--green-dim);
+  color: var(--green);
+}
+.btn-twitter {
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+  text-decoration: none;
+}
+.btn-twitter:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  text-decoration: none;
+}
 .btn-close {
   color: var(--text-muted);
 }

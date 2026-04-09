@@ -13,8 +13,8 @@ const path = require('path');
 
 // ── Config ──────────────────────────────────────────────────────────────────
 const DATA_API = 'https://data-api.polymarket.com';
-const DELAY_MS = 500;           // ms between API calls (be respectful)
-const POOL_LIMIT = 50;          // max results per leaderboard query
+const DELAY_MS = 400;           // ms between API calls (be respectful)
+const POOL_LIMIT = 100;         // max results per leaderboard query
 const TOP_N = 10;               // final output count
 const POSITIONS_LIMIT = 200;    // max positions to fetch per trader
 
@@ -53,6 +53,8 @@ async function fetchLeaderboardPool() {
     { period: 'WEEK',  orderBy: 'PNL' },
     { period: 'MONTH', orderBy: 'PNL' },
     { period: 'ALL',   orderBy: 'PNL' },
+    { period: 'DAY',   orderBy: 'VOL' },
+    { period: 'WEEK',  orderBy: 'VOL' },
     { period: 'MONTH', orderBy: 'VOL' },
     { period: 'ALL',   orderBy: 'VOL' },
   ];
@@ -243,6 +245,8 @@ function round2(n) {
 }
 
 // ── Step 4: Composite scoring ───────────────────────────────────────────────
+// Weights: ROI 25% | MonthPnL 18% | WeekPnL 14% | DayPnL 8% | Consistency 10%
+//          WinRate 10% | Activity 10% | Budget 5%  = 100%
 function calculateCompositeScore(metrics, poolMetrics) {
   let score = 0;
 
@@ -252,20 +256,26 @@ function calculateCompositeScore(metrics, poolMetrics) {
     : 0;
   score += roiNorm * 25;
 
-  // Month PnL (20%) — log-scale normalization (handles huge range)
+  // Month PnL (18%) — log-scale normalization (handles huge range)
   if (metrics.monthPnl > 0 && poolMetrics.maxMonthPnl > 0) {
     const logNorm = Math.log10(1 + metrics.monthPnl) / Math.log10(1 + poolMetrics.maxMonthPnl);
-    score += Math.min(logNorm, 1) * 20;
+    score += Math.min(logNorm, 1) * 18;
   }
 
-  // Week PnL (15%)
+  // Week PnL (14%)
   if (metrics.weekPnl > 0 && poolMetrics.maxWeekPnl > 0) {
     const logNorm = Math.log10(1 + metrics.weekPnl) / Math.log10(1 + poolMetrics.maxWeekPnl);
-    score += Math.min(logNorm, 1) * 15;
+    score += Math.min(logNorm, 1) * 14;
   }
 
-  // Consistency (15%)
-  score += (metrics.consistencyScore / 100) * 15;
+  // Day PnL (8%) — fresh momentum signal
+  if (metrics.dayPnl > 0 && poolMetrics.maxDayPnl > 0) {
+    const logNorm = Math.log10(1 + metrics.dayPnl) / Math.log10(1 + poolMetrics.maxDayPnl);
+    score += Math.min(logNorm, 1) * 8;
+  }
+
+  // Consistency (10%) — present across multiple period leaderboards
+  score += (metrics.consistencyScore / 100) * 10;
 
   // Win rate (10%) — requires minimum positions
   if (metrics.winsCount + metrics.lossesCount >= 3) {
@@ -299,7 +309,7 @@ function calculateCompositeScore(metrics, poolMetrics) {
 async function main() {
   const startTime = Date.now();
   console.log('╔══════════════════════════════════════════╗');
-  console.log('║       PolyScan — Data Fetcher v1.0       ║');
+  console.log('║       PolyScan — Data Fetcher v2.0       ║');
   console.log('╚══════════════════════════════════════════╝');
   console.log(`  Started: ${new Date().toISOString()}\n`);
 
@@ -322,11 +332,12 @@ async function main() {
 
   // Calculate pool-wide stats for normalization
   const poolMetrics = {
-    maxRoi: Math.max(...allMetrics.map(m => m.roiPct).filter(v => isFinite(v) && v > 0), 1),
+    maxRoi:      Math.max(...allMetrics.map(m => m.roiPct).filter(v => isFinite(v) && v > 0), 1),
     maxMonthPnl: Math.max(...allMetrics.map(m => m.monthPnl).filter(v => v > 0), 1),
-    maxWeekPnl: Math.max(...allMetrics.map(m => m.weekPnl).filter(v => v > 0), 1),
+    maxWeekPnl:  Math.max(...allMetrics.map(m => m.weekPnl).filter(v => v > 0), 1),
+    maxDayPnl:   Math.max(...allMetrics.map(m => m.dayPnl).filter(v => v > 0), 1),
   };
-  console.log(`  Pool normalization: maxROI=${poolMetrics.maxRoi}%, maxMonthPnL=$${poolMetrics.maxMonthPnl}, maxWeekPnL=$${poolMetrics.maxWeekPnl}`);
+  console.log(`  Pool normalization: maxROI=${poolMetrics.maxRoi}%, maxMonthPnL=$${poolMetrics.maxMonthPnl}, maxWeekPnL=$${poolMetrics.maxWeekPnl}, maxDayPnL=$${poolMetrics.maxDayPnl}`);
 
   // Step 4: Score & rank
   console.log('\n─── Step 4/4: Scoring & ranking ───────────');
@@ -378,11 +389,13 @@ async function main() {
   const output = {
     generatedAt: new Date().toISOString(),
     totalCandidatesAnalyzed: candidates.size,
+    scoredCandidatesCount: scored.length,
     scoringWeights: {
       roiPct: '25%',
-      monthPnl: '20%',
-      weekPnl: '15%',
-      consistency: '15%',
+      monthPnl: '18%',
+      weekPnl: '14%',
+      dayPnl: '8%',
+      consistency: '10%',
       winRate: '10%',
       activity: '10%',
       budgetCompatibility: '5%',
