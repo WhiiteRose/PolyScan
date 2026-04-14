@@ -103,19 +103,29 @@
           <div class="detail-meta" id="detail-meta"></div>
         </div>
         <div class="detail-body">
-          <h3>Active Positions <span class="subtitle" id="detail-positions-count"></span></h3>
+          <div class="positions-header">
+            <h3>Positions <span class="subtitle" id="detail-positions-count"></span></h3>
+            <div class="positions-tabs">
+              <button class="pos-tab active" data-filter="active" id="tab-active">🟢 Active <span class="pos-tab-count" id="active-count">0</span></button>
+              <button class="pos-tab" data-filter="resolved" id="tab-resolved">⚪ Resolved <span class="pos-tab-count" id="resolved-count">0</span></button>
+              <button class="pos-tab" data-filter="all" id="tab-all">All <span class="pos-tab-count" id="all-count">0</span></button>
+            </div>
+          </div>
           <div class="table-wrapper">
             <table id="detail-positions-table">
               <thead>
                 <tr>
+                  <th style="width:32px"></th>
                   <th>Market</th>
                   <th>Outcome</th>
+                  <th>Signal</th>
                   <th class="num">Size</th>
-                  <th class="num">Avg Price</th>
+                  <th class="num">Entry</th>
                   <th class="num">Current</th>
                   <th class="num">PnL ($)</th>
                   <th class="num">PnL (%)</th>
                   <th>End Date</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="detail-positions-body"></tbody>

@@ -588,6 +588,184 @@ tr.data-row.active {
 }
 .subtitle { font-weight: 400; color: var(--text-muted); font-size: 0.8rem; }
 
+/* ── Positions header & tabs ─────────────────────────── */
+.positions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.positions-tabs {
+  display: flex;
+  gap: 4px;
+}
+.pos-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pos-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.pos-tab.active {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: var(--accent-light);
+}
+.pos-tab-count {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.06);
+  min-width: 16px;
+  text-align: center;
+}
+.pos-tab.active .pos-tab-count {
+  background: rgba(99,102,241,0.25);
+}
+
+/* ── Signal badges ───────────────────────────────────── */
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.signal-buy {
+  background: var(--green-bg);
+  border: 1px solid var(--green-dim);
+  color: var(--green);
+  animation: signalPulse 2s infinite;
+}
+.signal-hold {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: var(--yellow);
+}
+.signal-late {
+  background: var(--red-bg);
+  border: 1px solid var(--red-dim);
+  color: var(--red);
+}
+.signal-resolved {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+@keyframes signalPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.3); }
+  50%      { box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.15); }
+}
+
+/* ── Position icons ──────────────────────────────────── */
+.pos-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+}
+.pos-icon-placeholder {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+}
+
+/* ── Outcome badge ───────────────────────────────────── */
+.outcome-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Market link ─────────────────────────────────────── */
+.market-link {
+  color: var(--text-primary) !important;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.market-link:hover {
+  color: var(--accent-light) !important;
+  text-decoration: underline !important;
+}
+
+/* ── Trade button ────────────────────────────────────── */
+.btn-trade {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+  border: 1px solid var(--green-dim);
+  color: var(--green) !important;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  text-decoration: none !important;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-trade:hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1));
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.15);
+  transform: translateY(-1px);
+  text-decoration: none !important;
+}
+
+.text-muted-sm {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-style: italic;
+}
+
+/* ── Position rows ───────────────────────────────────── */
+.pos-row-resolved td {
+  opacity: 0.5;
+}
+.pos-row-resolved:hover td {
+  opacity: 0.75;
+}
+.pos-row-active {
+  transition: background 0.1s;
+}
+.pos-row-active:hover {
+  background: var(--bg-hover);
+}
+
 /* ── Buttons ──────────────────────────────────────────── */
 .btn {
   display: inline-flex;

@@ -333,6 +333,10 @@ function toggleDetail(trader) {
   renderTableBody();
 }
 
+// ── Position filter state ──────────────────────────────────────────────────
+let currentPositionFilter = 'active';
+let currentTraderPositions = [];
+
 function showDetail(trader) {
   const panel = document.getElementById('detail-panel');
   panel.style.display = 'block';
@@ -372,35 +376,103 @@ function showDetail(trader) {
     trader.xUsername ? stat('𝕏 Twitter', `@${trader.xUsername}`, '') : '',
   ].filter(Boolean).join('');
 
-  const positions = trader.positions || [];
-  document.getElementById('detail-positions-count').textContent = `(${positions.length})`;
+  // Store positions and setup tabs
+  currentTraderPositions = trader.positions || [];
+  currentPositionFilter = 'active';
 
+  const activePositions   = currentTraderPositions.filter(p => !p.redeemable && p.size > 0.001);
+  const resolvedPositions = currentTraderPositions.filter(p => p.redeemable || p.size <= 0.001);
+
+  document.getElementById('detail-positions-count').textContent = `(${currentTraderPositions.length})`;
+  document.getElementById('active-count').textContent   = activePositions.length;
+  document.getElementById('resolved-count').textContent = resolvedPositions.length;
+  document.getElementById('all-count').textContent      = currentTraderPositions.length;
+
+  // Setup tab clicks
+  document.querySelectorAll('.pos-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.filter === 'active');
+    tab.onclick = () => {
+      currentPositionFilter = tab.dataset.filter;
+      document.querySelectorAll('.pos-tab').forEach(t => t.classList.toggle('active', t === tab));
+      renderPositions();
+    };
+  });
+
+  renderPositions();
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function getSignalBadge(p) {
+  // If resolved / redeemable, no signal
+  if (p.redeemable || p.curPrice <= 0.001 || p.curPrice >= 0.999) {
+    return '<span class="signal-badge signal-resolved">DONE</span>';
+  }
+
+  const priceDiff = p.curPrice - p.avgPrice;
+  const priceDiffPct = p.avgPrice > 0 ? (priceDiff / p.avgPrice) * 100 : 0;
+
+  // Current price is still close to or better than entry → good time to enter
+  if (priceDiffPct <= 5) {
+    return '<span class="signal-badge signal-buy" title="Price is still near or below entry — good entry point">🟢 BUY</span>';
+  }
+  // Price moved up a bit but still reasonable (5-20%)
+  if (priceDiffPct <= 20) {
+    return '<span class="signal-badge signal-hold" title="Price moved up from entry — still possible but watch closely">🟡 HOLD</span>';
+  }
+  // Price moved up significantly
+  return '<span class="signal-badge signal-late" title="Price moved significantly from entry — might be too late">🔴 LATE</span>';
+}
+
+function renderPositions() {
   const tbody = document.getElementById('detail-positions-body');
   tbody.innerHTML = '';
 
-  if (positions.length === 0) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="8" style="color:var(--text-muted);text-align:center;padding:20px;">No position data available</td>';
-    tbody.appendChild(tr);
+  let filtered;
+  if (currentPositionFilter === 'active') {
+    filtered = currentTraderPositions.filter(p => !p.redeemable && p.size > 0.001);
+  } else if (currentPositionFilter === 'resolved') {
+    filtered = currentTraderPositions.filter(p => p.redeemable || p.size <= 0.001);
   } else {
-    for (const p of positions) {
-      const tr        = document.createElement('tr');
-      const marketUrl = p.eventSlug ? `https://polymarket.com/event/${p.eventSlug}` : '#';
-      tr.innerHTML = `
-        <td><a href="${marketUrl}" target="_blank" title="${escapeHtml(p.title)}">${truncate(p.title, 40)}</a></td>
-        <td>${p.outcome}</td>
-        <td class="num">${p.size.toFixed(2)}</td>
-        <td class="num">${p.avgPrice.toFixed(3)}</td>
-        <td class="num">${p.curPrice.toFixed(3)}</td>
-        <td class="num">${formatMoney(p.cashPnl)}</td>
-        <td class="num">${formatPct(p.percentPnl)}</td>
-        <td>${p.endDate ? new Date(p.endDate).toLocaleDateString('fr-FR') : '—'}</td>
-      `;
-      tbody.appendChild(tr);
-    }
+    filtered = [...currentTraderPositions];
   }
 
-  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (filtered.length === 0) {
+    const tr = document.createElement('tr');
+    const label = currentPositionFilter === 'active'
+      ? 'No active positions — trader may have closed all trades'
+      : currentPositionFilter === 'resolved'
+        ? 'No resolved positions in view'
+        : 'No position data available';
+    tr.innerHTML = `<td colspan="11" style="color:var(--text-muted);text-align:center;padding:24px;font-style:italic;">${label}</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  for (const p of filtered) {
+    const tr = document.createElement('tr');
+    const marketUrl = p.eventSlug ? `https://polymarket.com/event/${p.eventSlug}` : '#';
+    const iconImg = p.icon
+      ? `<img class="pos-icon" src="${p.icon}" alt="" onerror="this.style.display='none'">`
+      : '<div class="pos-icon-placeholder"></div>';
+    const signal = getSignalBadge(p);
+    const isActive = !p.redeemable && p.size > 0.001;
+
+    tr.className = isActive ? 'pos-row-active' : 'pos-row-resolved';
+    tr.innerHTML = `
+      <td>${iconImg}</td>
+      <td><a href="${marketUrl}" target="_blank" title="${escapeHtml(p.title)}" class="market-link">${truncate(p.title, 45)}</a></td>
+      <td><span class="outcome-badge">${p.outcome}</span></td>
+      <td>${signal}</td>
+      <td class="num">${formatMoney(p.size * p.avgPrice)}</td>
+      <td class="num">${p.avgPrice.toFixed(3)}</td>
+      <td class="num">${p.curPrice.toFixed(3)}</td>
+      <td class="num">${formatMoney(p.cashPnl)}</td>
+      <td class="num">${formatPct(p.percentPnl)}</td>
+      <td>${p.endDate ? new Date(p.endDate).toLocaleDateString('fr-FR') : '—'}</td>
+      <td>${isActive ? `<a href="${marketUrl}" target="_blank" class="btn-trade" title="Open this market on Polymarket">🔗 Trade</a>` : '<span class="text-muted-sm">Closed</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  }
 }
 
 function closeDetail() {
